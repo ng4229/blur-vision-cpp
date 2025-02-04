@@ -62,7 +62,6 @@
     <ClCompile Include="pch.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="ImageObject.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

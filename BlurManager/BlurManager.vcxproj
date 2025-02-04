@@ -201,7 +201,6 @@
     <ClCompile Include="BlurManager.cpp" />
     <ClCompile Include="BlurManagerDoc.cpp" />
     <ClCompile Include="BlurManagerView.cpp" />
-    <ClCompile Include="ImageObject.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
