@@ -30,3 +30,24 @@
 *.exe
 *.out
 *.app
+
+# Visual Studio 관련 파일
+*.vs/
+.VC.db
+Debug/
+Release/
+x64/
+*.ilk
+*.pdb
+*.idb
+*.res
+*.log
+*.map
+*.manifest
+*.iobj
+*.ipdb
+*.exp
+*.rsp
+*.obj
+*.cache
+*.opensdf
