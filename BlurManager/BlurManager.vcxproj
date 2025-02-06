@@ -20,7 +20,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
-    <ProjectGuid>{5559754E-92E6-431B-98FF-ED4C08576752}</ProjectGuid>
+    <ProjectGuid>{EBAFF85F-0E47-4207-8409-25AA495A6463}</ProjectGuid>
     <Keyword>MFCProj</Keyword>
     <RootNamespace>BlurManager</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
@@ -94,9 +94,12 @@
       <PreprocessorDefinitions>_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)Common</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>opencv_world490d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -166,13 +169,15 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)Common</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>opencv_world490.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -189,19 +194,17 @@
     <ClInclude Include="..\Common\IImageProcessor.h" />
     <ClInclude Include="..\Common\ImageObject.h" />
     <ClInclude Include="BlurManager.h" />
-    <ClInclude Include="BlurManagerDoc.h" />
-    <ClInclude Include="BlurManagerView.h" />
+    <ClInclude Include="BlurManagerDlg.h" />
+    <ClInclude Include="CLogger.h" />
     <ClInclude Include="framework.h" />
-    <ClInclude Include="MainFrm.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BlurManager.cpp" />
-    <ClCompile Include="BlurManagerDoc.cpp" />
-    <ClCompile Include="BlurManagerView.cpp" />
-    <ClCompile Include="MainFrm.cpp" />
+    <ClCompile Include="BlurManagerDlg.cpp" />
+    <ClCompile Include="CLogger.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -217,8 +220,6 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\BlurManager.ico" />
-    <Image Include="res\BlurManagerDoc.ico" />
-    <Image Include="res\Toolbar.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

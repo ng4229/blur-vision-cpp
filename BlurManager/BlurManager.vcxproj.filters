@@ -14,11 +14,14 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
     <Filter Include="Common">
-      <UniqueIdentifier>{638e5f71-7c21-4c5f-972a-95e962d1d803}</UniqueIdentifier>
+      <UniqueIdentifier>{1de95b03-7b4c-442b-b801-c966c8a480b2}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BlurManager.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="BlurManagerDlg.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="framework.h">
@@ -27,21 +30,13 @@
     <ClInclude Include="targetver.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="MainFrm.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="BlurManagerDoc.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="BlurManagerView.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="Resource.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="pch.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="CLogger.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="..\Common\IImageProcessor.h">
@@ -55,18 +50,13 @@
     <ClCompile Include="BlurManager.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="MainFrm.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="BlurManagerDoc.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="BlurManagerView.cpp">
+    <ClCompile Include="BlurManagerDlg.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="CLogger.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -81,13 +71,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="res\BlurManagerDoc.ico">
-      <Filter>리소스 파일</Filter>
-    </Image>
     <Image Include="res\BlurManager.ico">
-      <Filter>리소스 파일</Filter>
-    </Image>
-    <Image Include="res\Toolbar.bmp">
       <Filter>리소스 파일</Filter>
     </Image>
   </ItemGroup>
