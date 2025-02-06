@@ -30,14 +30,16 @@ public:
 	~ImageObject() {};
 
 	// return type : cv::Mat
+	// return value : Image
 	// 기능 : Buffer data를 cv::Mat으로 변환 메서드
-	cv::Mat convertToMat()
+	cv::Mat convertToMat() const
 	{
 		return cv::Mat(m_kHeight, m_kWidth, CV_8UC1, (void*)m_vecData.data()).clone();
 	}
 
 	// return type : std::pair<uint32_t, uint32_t>
-	// 기능 : 이미지 크기 반환 메서드 
+	// return value : (Height, Width)
+	// 기능 : 이미지 크기 반환 메서드
 	std::pair<uint32_t, uint32_t> getImageSize()
 	{
 		return std::pair<uint32_t, uint32_t>(m_kHeight, m_kWidth);

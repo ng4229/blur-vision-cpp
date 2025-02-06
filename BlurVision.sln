@@ -9,6 +9,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenCVBlurDLL", "OpenCVBlur
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CustomBlurDLL", "CustomBlurDLL\CustomBlurDLL.vcxproj", "{EB882B10-3B18-4FFC-9350-512BA589EB16}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{490A1ECB-8045-45AF-B8EB-6A932715A61A}"
+	ProjectSection(SolutionItems) = preProject
+		Common\IImageProcessor.h = Common\IImageProcessor.h
+		Common\ImageObject.h = Common\ImageObject.h
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
