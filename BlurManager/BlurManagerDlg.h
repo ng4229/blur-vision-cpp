@@ -22,6 +22,10 @@ public:
 
 
 // 구현입니다.
+private:
+	// 불러온 이미지 적재용
+	std::vector<std::shared_ptr<ImageObject>> m_vecImagePtr;
+
 
 protected:
 	HICON m_hIcon;
@@ -35,5 +39,8 @@ protected:
 public:
 	afx_msg void OnBnClickedButtonLoadImage();
 
+	bool openFileAndLoadImage(const std::string& strFolderPath);
+
+	void UpdateImage();
 
 };

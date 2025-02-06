@@ -7,6 +7,7 @@
 #include "BlurManager.h"
 #include "BlurManagerDlg.h"
 #include "afxdialogex.h"
+#include <filesystem>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -128,4 +129,55 @@ HCURSOR CBlurManagerDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+
+
+void CBlurManagerDlg::OnBnClickedButtonLoadImage()
+{
+	if (m_vecImagePtr.empty() == false)
+	{
+		m_vecImagePtr.clear();
+	}
+
+	const std::string& strFolderPath = "D:\\1.Program\\98.Study\\blur-vision-cpp\\LoadImage\\";
+
+	// #Log : 로드 시작
+	// 파일 로드
+	bool bLoadedImage = openFileAndLoadImage(strFolderPath);
+
+	// #Log : 로드 완료
+	
+	if (bLoadedImage == false)	return;
+
+	// 이미지 그리기 메세지
+	UpdateImage();
+}
+
+bool CBlurManagerDlg::openFileAndLoadImage(const std::string& strFolderPath)
+{
+	if (strFolderPath.empty() == true)	return false;
+
+	for (const auto& entry : fs::directory_iterator(strFolderPath))
+	{
+		if (entry.is_regular_file())
+		{
+			cv::Mat img = cv::imread(entry.path().string(), cv::IMREAD_GRAYSCALE);
+			if (!img.empty())
+			{
+				// #Log : 파일명 로드 성공 (idx)
+				// 이미지 vector에 적재
+				m_vecImagePtr.push_back(std::make_shared<ImageObject>(img));
+
+				std::cout << "Loaded: " << entry.path().filename() << std::endl;
+			}
+			else
+			{
+				// #Log : warning : 파일명 로드 실패 (idx)
+				std::cerr << "Failed to load: " << entry.path().filename() << std::endl;
+			}
+		}
+	}
+
+	// 이미지 로드 성공시, true 반환
+	return !m_vecImagePtr.empty();
+}
 
