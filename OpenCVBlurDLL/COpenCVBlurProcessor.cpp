@@ -3,4 +3,19 @@
 
 bool COpenCVBlurProcessor::ImageBlur(const ImageObject* src, ImageObject* dst, const int kernelSize)
 {
+	// 예외처리
+	if (src == nullptr || dst == nullptr || kernelSize < 21)	return false;
+
+	const cv::Mat srcImage = src->convertToMat();
+	// 비어있는지 확인
+	if (srcImage.empty())	return false;
+
+	// blur() 실행
+	cv::Mat dstImage;
+	cv::blur(srcImage, dstImage, cv::Size(kernelSize, kernelSize));
+
+	// dst 객체에 값 저장
+	*dst = ImageObject(dstImage);
+
+	return true;
 }
