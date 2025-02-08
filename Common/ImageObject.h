@@ -43,9 +43,21 @@ public:
 	// return type : std::pair<uint32_t, uint32_t>
 	// return value : (Height, Width)
 	// 기능 : 이미지 크기 반환 메서드
-	std::pair<uint32_t, uint32_t> getImageSize()
+	const std::vector<uint8_t>& getImageData() const
 	{
-		return std::pair<uint32_t, uint32_t>(m_kHeight, m_kWidth);
+		return m_vecData;
+	}
+	std::vector<uint8_t>& getImageData()
+	{
+		return m_vecData;
+	}
+
+	// return type : std::pair<uint32_t, uint32_t>
+	// return value : (Height, Width)
+	// 기능 : 이미지 크기 반환 메서드
+	std::pair<uint32_t, uint32_t> getImageSize() const
+	{
+		return { m_kHeight, m_kWidth };
 	}
 };
 

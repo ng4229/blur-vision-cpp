@@ -4,7 +4,7 @@
 bool COpenCVBlurProcessor::ImageBlur(const ImageObject* src, ImageObject* dst, const int kernelSize)
 {
 	// 예외처리
-	if (src == nullptr || dst == nullptr || kernelSize < 21)	return false;
+	if (src == nullptr || dst == nullptr || kernelSize < 21 || kernelSize % 2 == 0)	return false;
 
 	const cv::Mat srcImage = src->convertToMat();
 	// 비어있는지 확인
