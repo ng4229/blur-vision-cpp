@@ -4,6 +4,7 @@
 
 #pragma once
 #include "ImageObject.h"
+#include "ConfigManager.h"
 
 // CBlurManagerDlg 대화 상자
 class CBlurManagerDlg : public CDialogEx
@@ -25,6 +26,7 @@ public:
 private:
 	// 불러온 이미지 적재용
 	std::vector<ImageObjectPtr> m_vecImagePtr;
+	std::shared_ptr<CConfigManager> m_pConfigManager;
 
 	CStatic m_pictureImage[IMAGE_COUNT];
 

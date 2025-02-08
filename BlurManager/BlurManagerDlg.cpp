@@ -15,6 +15,7 @@
 #endif
 
 namespace fs = std::filesystem;
+using namespace CONFIG;
 
 typedef IImageProcessor* (*CreateBlurInstanceFunc)();
 typedef void (*DestroyBlurInstanceFunc)(IImageProcessor*);
@@ -138,6 +139,10 @@ CBlurManagerDlg::CBlurManagerDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_BLURMANAGER_DIALOG, pParent)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+
+	// ini 파일 Load
+	m_pConfigManager = std::make_shared<CConfigManager>();
+
 }
 
 void CBlurManagerDlg::DoDataExchange(CDataExchange* pDX)
@@ -189,9 +194,6 @@ BOOL CBlurManagerDlg::OnInitDialog()
 	// 1. UI 초기화 (이미지 표현 창 위치 조정)
 	initUI();
 
-	// 2. ini 파일 Load
-
-
 	// 3. 
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
@@ -230,19 +232,19 @@ void CBlurManagerDlg::OnBnClickedButtonLoadImage()
 		m_vecImagePtr.clear();
 	}
 
-	const std::string& strFolderPath = "D:\\1.Program\\98.Study\\blur-vision-cpp\\LoadImage\\";
+	const std::string& strFolderPath = m_pConfigManager->getStrValue(CONFIG::SECTION_SYSTEM, CONFIG::SYSTEM_LOAD_IMAGE_PATH);
+	const int nKernelSize = m_pConfigManager->getIntValue(CONFIG::SECTION_SYSTEM, CONFIG::SYSTEM_KERNEL_SIZE);
 
 	// #Log : 로드 시작
 	// 파일 로드
 	bool bLoadedImage = openFileAndLoadImage(strFolderPath);
 
 	// #Log : 로드 완료
-	static int nSize = 3;
 	if (bLoadedImage == false)	return;
 	
 	for (auto& image : m_vecImagePtr)
-		image = ProcessBlurWithDLL("OpenCVBlurDLL.dll", image, nSize);
-	nSize += 10;
+		image = ProcessBlurWithDLL("OpenCVBlurDLL.dll", image, nKernelSize);
+
 	// 이미지 그리기 메세지
 	displayImage();
 }

@@ -196,6 +196,8 @@
     <ClInclude Include="BlurManager.h" />
     <ClInclude Include="BlurManagerDlg.h" />
     <ClInclude Include="CLogger.h" />
+    <ClInclude Include="ConfigManager.h" />
+    <ClInclude Include="ConfigUtil.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
@@ -205,6 +207,8 @@
     <ClCompile Include="BlurManager.cpp" />
     <ClCompile Include="BlurManagerDlg.cpp" />
     <ClCompile Include="CLogger.cpp" />
+    <ClCompile Include="ConfigManager.cpp" />
+    <ClCompile Include="ConfigUtil.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
