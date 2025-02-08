@@ -2,6 +2,9 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 
+class ImageObject;
+typedef std::shared_ptr<ImageObject> ImageObjectPtr;
+
 class ImageObject
 {
 private:

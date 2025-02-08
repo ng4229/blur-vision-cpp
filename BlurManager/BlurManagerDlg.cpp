@@ -7,11 +7,95 @@
 #include "BlurManager.h"
 #include "BlurManagerDlg.h"
 #include "afxdialogex.h"
+#include "IImageProcessor.h"
 #include <filesystem>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+namespace fs = std::filesystem;
+
+typedef IImageProcessor* (*CreateBlurInstanceFunc)();
+typedef void (*DestroyBlurInstanceFunc)(IImageProcessor*);
+
+ImageObjectPtr ProcessBlurWithDLL(const std::string& strDLLName, const ImageObjectPtr& srcImage, int nKernelSize)
+{
+	HMODULE hDll = LoadLibraryA(strDLLName.c_str());
+	if (!hDll)
+	{
+		// #Log : DLL 로드 실패
+		return nullptr;
+	}
+
+	CreateBlurInstanceFunc CreateInstance = (CreateBlurInstanceFunc)GetProcAddress(hDll, "CreateBlurInstance");
+	DestroyBlurInstanceFunc DestroyInstance = (DestroyBlurInstanceFunc)GetProcAddress(hDll, "DestroyBlurInstance");
+
+	if (!CreateInstance || !DestroyInstance) 
+	{
+		// #Log : DLL 함수 찾기 실패
+		FreeLibrary(hDll);
+		return nullptr;
+	}
+
+	IImageProcessor* pBlurProcessor = CreateInstance();
+	if (!pBlurProcessor) 
+	{
+		// #Log : DLL 인스턴스 생성 실패
+		FreeLibrary(hDll);
+		return nullptr;
+	}
+
+	ImageObjectPtr dstImage = std::make_shared<ImageObject>();
+	if (pBlurProcessor->ImageBlur(srcImage.get(), dstImage.get(), nKernelSize))
+	{
+		// #Log : 블러 적용 완료
+	}
+	else {
+		// #Log : 블러 적용 실패
+	}
+
+	// 메모리 해제
+	DestroyInstance(pBlurProcessor);
+	FreeLibrary(hDll);
+
+	return dstImage;
+}
+
+HBITMAP MatToHBITMAP(const cv::Mat& scrImage, int targetWidth, int targetHeight) 
+{
+	if (scrImage.empty()) return nullptr;
+
+	// 크기 조정
+	cv::Mat resizedImage;
+	cv::resize(scrImage, resizedImage, cv::Size(targetWidth, targetHeight));
+
+	cv::Mat dstImage;
+	if (resizedImage.channels() == 1) 
+	{
+		cv::cvtColor(resizedImage, dstImage, cv::COLOR_GRAY2BGR); // 컬러로 변환
+	}
+
+	int width = dstImage.cols;
+	int height = dstImage.rows;
+	int bpp = dstImage.channels() * 8; // 24-bit 또는 32-bit
+
+	BITMAPINFO bmi;
+	ZeroMemory(&bmi, sizeof(BITMAPINFO));
+	bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	bmi.bmiHeader.biWidth = width;
+	bmi.bmiHeader.biHeight = -height;
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = bpp;
+	bmi.bmiHeader.biCompression = BI_RGB;
+
+	void* bits = nullptr;
+	HBITMAP hBitmap = CreateDIBSection(NULL, &bmi, DIB_RGB_COLORS, &bits, NULL, 0);
+	if (!hBitmap) return nullptr;
+
+	memcpy(bits, dstImage.data, width * height * dstImage.channels());
+	return hBitmap;
+}
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
@@ -59,11 +143,13 @@ CBlurManagerDlg::CBlurManagerDlg(CWnd* pParent /*=nullptr*/)
 void CBlurManagerDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_STATIC_IMAGE_1, m_pictureImage[0]);
+	DDX_Control(pDX, IDC_STATIC_IMAGE_2, m_pictureImage[1]);
+	DDX_Control(pDX, IDC_STATIC_IMAGE_3, m_pictureImage[2]);
 }
 
 BEGIN_MESSAGE_MAP(CBlurManagerDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
-	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_BUTTON_LOAD_IMAGE, &CBlurManagerDlg::OnBnClickedButtonLoadImage)
 END_MESSAGE_MAP()
@@ -100,7 +186,13 @@ BOOL CBlurManagerDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// 큰 아이콘을 설정합니다.
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
-	// TODO: 여기에 추가 초기화 작업을 추가합니다.
+	// 1. UI 초기화 (이미지 표현 창 위치 조정)
+	initUI();
+
+	// 2. ini 파일 Load
+
+
+	// 3. 
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -145,11 +237,14 @@ void CBlurManagerDlg::OnBnClickedButtonLoadImage()
 	bool bLoadedImage = openFileAndLoadImage(strFolderPath);
 
 	// #Log : 로드 완료
-	
+	static int nSize = 3;
 	if (bLoadedImage == false)	return;
-
+	
+	for (auto& image : m_vecImagePtr)
+		image = ProcessBlurWithDLL("OpenCVBlurDLL.dll", image, nSize);
+	nSize += 10;
 	// 이미지 그리기 메세지
-	UpdateImage();
+	displayImage();
 }
 
 bool CBlurManagerDlg::openFileAndLoadImage(const std::string& strFolderPath)
@@ -166,13 +261,10 @@ bool CBlurManagerDlg::openFileAndLoadImage(const std::string& strFolderPath)
 				// #Log : 파일명 로드 성공 (idx)
 				// 이미지 vector에 적재
 				m_vecImagePtr.push_back(std::make_shared<ImageObject>(img));
-
-				std::cout << "Loaded: " << entry.path().filename() << std::endl;
 			}
 			else
 			{
 				// #Log : warning : 파일명 로드 실패 (idx)
-				std::cerr << "Failed to load: " << entry.path().filename() << std::endl;
 			}
 		}
 	}
@@ -181,3 +273,65 @@ bool CBlurManagerDlg::openFileAndLoadImage(const std::string& strFolderPath)
 	return !m_vecImagePtr.empty();
 }
 
+void CBlurManagerDlg::displayImage() {
+	if (m_vecImagePtr.empty()) return;
+
+	// 기존 HBITMAP 제거
+	for (auto& hBitmap : m_vecHBitmap) 
+	{
+		if (hBitmap) 
+		{
+			DeleteObject(hBitmap);
+		}
+	}
+	m_vecHBitmap.clear();
+	
+	int numImages = m_vecImagePtr.size();
+
+	int nMargin = 10;
+	int nBottomMargin = 100;
+
+	// Dialog 크기 get
+	CRect rect;
+	GetClientRect(&rect);
+	std::pair<int, int> targetSize((rect.Width() - nMargin * 2) * 0.5, (rect.Height() - nBottomMargin - nMargin * (numImages + 1)) / numImages);
+	targetSize.first -= targetSize.first % 4;
+	targetSize.second -= targetSize.second % 4;
+
+	// 각 이미지 출력 
+	for (int i = 0; i < numImages; i++) 
+	{
+		HBITMAP hBitmap = MatToHBITMAP(m_vecImagePtr[i]->convertToMat(), targetSize.first, targetSize.second);
+		m_vecHBitmap.push_back(hBitmap);
+		m_pictureImage[i].SetBitmap(hBitmap);
+	}
+}
+
+void CBlurManagerDlg::initUI()
+{
+	// 다이얼로그 창 사이즈 가져오기
+	CRect dlgRect;
+	GetClientRect(&dlgRect);
+	int dlgWidth = dlgRect.Width();
+	int dlgHeight = dlgRect.Height();
+
+	// 창 마진 설정
+	int margin = 10;
+	int nBottomMargin = 100;
+
+	// 가로 : 다이얼로그 가로의 50% 차지 (양 옆 마진 제외)
+	int imgWidth = (dlgWidth - (margin * 2)) / 2;
+
+	// 세로 : 다이얼로그 남은 공간(상,하 마진 + 바닥 마진)을 3등분하여 각 이미지가 1/3씩 차지
+	int availableHeight = dlgHeight - nBottomMargin - (margin * (IMAGE_COUNT + 1));
+	int imgHeight = availableHeight / IMAGE_COUNT;
+
+	// 이미지 디스플레이 위치 설정 (세로 3등분 배치)
+	for (int i = 0; i < IMAGE_COUNT; i++) 
+	{
+		int xPos = margin;
+		int yPos = margin + i * (imgHeight + margin);
+
+		m_pictureImage[i].SetWindowPos(NULL, xPos, yPos, imgWidth, imgHeight, SWP_NOZORDER);
+	}
+}

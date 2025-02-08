@@ -10,4 +10,6 @@
 // 여기에 미리 컴파일하려는 헤더 추가
 #include "framework.h"
 
+static const int IMAGE_COUNT = 3;
+
 #endif //PCH_H

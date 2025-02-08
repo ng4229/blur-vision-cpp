@@ -24,8 +24,12 @@ public:
 // 구현입니다.
 private:
 	// 불러온 이미지 적재용
-	std::vector<std::shared_ptr<ImageObject>> m_vecImagePtr;
+	std::vector<ImageObjectPtr> m_vecImagePtr;
 
+	CStatic m_pictureImage[IMAGE_COUNT];
+
+	// 이미지 UI 표현
+	std::vector<HBITMAP> m_vecHBitmap;
 
 protected:
 	HICON m_hIcon;
@@ -33,7 +37,6 @@ protected:
 	// 생성된 메시지 맵 함수
 	virtual BOOL OnInitDialog();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
-	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
@@ -41,6 +44,8 @@ public:
 
 	bool openFileAndLoadImage(const std::string& strFolderPath);
 
-	void UpdateImage();
+	void displayImage();
+
+	void initUI();
 
 };
