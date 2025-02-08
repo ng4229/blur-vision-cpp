@@ -19,3 +19,15 @@ bool COpenCVBlurProcessor::ImageBlur(const ImageObject* src, ImageObject* dst, c
 
 	return true;
 }
+
+extern "C" 
+{
+	__declspec(dllexport) IImageProcessor* CreateBlurInstance()
+	{
+		return new COpenCVBlurProcessor();
+	}
+	__declspec(dllexport) void DestroyBlurInstance(IImageProcessor* instance)
+	{
+		delete instance;
+	}
+}

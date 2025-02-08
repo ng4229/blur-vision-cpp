@@ -10,3 +10,9 @@ public:
 
 };
 
+extern "C" 
+{
+	__declspec(dllexport) IImageProcessor* CreateBlurInstance();
+	__declspec(dllexport) void DestroyBlurInstance(IImageProcessor* instance);
+}
+
