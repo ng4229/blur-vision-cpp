@@ -1,4 +1,6 @@
 #pragma once
+#define _AFXDLL
+#include <afxwin.h> 
 #include "IImageProcessor.h"
 
 class CCustomBlurProcessor: public IImageProcessor
