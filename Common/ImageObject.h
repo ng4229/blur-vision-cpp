@@ -14,7 +14,10 @@ private:
 
 public:
 	// 기본 생성자 (이미지 크기 0 x 0 으로 기본 셋팅)
-	ImageObject() : m_kWidth(0), m_kHeight(0) {}
+	ImageObject(int height, int width) : m_kHeight(height), m_kWidth(width) 
+	{
+		m_vecData.resize(height * width, 0);
+	}
 	
 	// 매개변수 : cv::Mat
 	// 초기화할 image 받는 생성자
@@ -26,7 +29,8 @@ public:
 		}
 		m_kWidth = image.cols;
 		m_kHeight = image.rows;
-		m_vecData.assign(image.data, image.data + (m_kHeight * m_kWidth));
+
+        m_vecData.assign(image.data, image.data + (m_kHeight * m_kWidth));
 	}
 	
 	// 기본 소멸자
