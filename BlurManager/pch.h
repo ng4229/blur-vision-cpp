@@ -10,6 +10,9 @@
 // 여기에 미리 컴파일하려는 헤더 추가
 #include "framework.h"
 
+// 메세지 정의
+#define WM_UPDATE_IMAGE (WM_USER + 1)
+
 static const int IMAGE_COUNT = 3;
 
 #endif //PCH_H

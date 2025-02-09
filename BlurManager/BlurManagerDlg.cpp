@@ -9,6 +9,11 @@
 #include "afxdialogex.h"
 #include "IImageProcessor.h"
 #include <filesystem>
+#include <type_traits>
+#include <format>
+#include <chrono>
+#include <windows.h>
+#include <psapi.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -26,6 +31,7 @@ ImageObjectPtr ProcessBlurWithDLL(const std::string& strDLLName, const ImageObje
 	if (!hDll)
 	{
 		// #Log : DLL 로드 실패
+		CLogger::Log(std::format("[ERROR] {} 로드 실패.", strDLLName));
 		return nullptr;
 	}
 
@@ -35,6 +41,7 @@ ImageObjectPtr ProcessBlurWithDLL(const std::string& strDLLName, const ImageObje
 	if (!CreateInstance || !DestroyInstance) 
 	{
 		// #Log : DLL 함수 찾기 실패
+		CLogger::Log(std::format("[DEBUG] {} blur 함수 찾기 실패.", strDLLName));
 		FreeLibrary(hDll);
 		return nullptr;
 	}
@@ -43,19 +50,20 @@ ImageObjectPtr ProcessBlurWithDLL(const std::string& strDLLName, const ImageObje
 	if (!pBlurProcessor) 
 	{
 		// #Log : DLL 인스턴스 생성 실패
+		CLogger::Log(std::format("[DEBUG] {} 인스턴스 생성 실패.", strDLLName));
 		FreeLibrary(hDll);
 		return nullptr;
 	}
 
-	ImageObjectPtr dstImage = std::make_shared<ImageObject>();
-	if (pBlurProcessor->ImageBlur(srcImage.get(), dstImage.get(), nKernelSize))
+	auto [height, width] = srcImage->getImageSize();
+	ImageObjectPtr dstImage = std::make_shared<ImageObject>(height, width);
+	CLogger::Log(std::format("[INFO] {} Blur 실행. [height:{}, width:{}, kernel:{}]", strDLLName, height, width, nKernelSize));
+	
+	if (!pBlurProcessor->ImageBlur(srcImage.get(), dstImage.get(), nKernelSize))
 	{
-		// #Log : 블러 적용 완료
-	}
-	else {
 		// #Log : 블러 적용 실패
+		CLogger::Log(std::format("[DEBUG] {} Blur 적용 실패. 이미지 크기, 커널 사이즈 등 확인해주세요.[height:{}, width:{}, kernel:{}]", strDLLName, height, width, nKernelSize));
 	}
-
 	// 메모리 해제
 	DestroyInstance(pBlurProcessor);
 	FreeLibrary(hDll);
@@ -98,6 +106,18 @@ HBITMAP MatToHBITMAP(const cv::Mat& scrImage, int targetWidth, int targetHeight)
 	return hBitmap;
 }
 
+double getCurrentTime() {
+	using namespace std::chrono;
+	return duration<double, std::milli>(steady_clock::now().time_since_epoch()).count();
+}
+
+SIZE_T GetMemoryUsage() {
+	PROCESS_MEMORY_COUNTERS pmc;
+	if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
+		return pmc.WorkingSetSize; // 현재 프로세스 메모리 사용량 (bytes)
+	}
+	return 0;
+}
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
 class CAboutDlg : public CDialogEx
@@ -148,14 +168,12 @@ CBlurManagerDlg::CBlurManagerDlg(CWnd* pParent /*=nullptr*/)
 void CBlurManagerDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
-	DDX_Control(pDX, IDC_STATIC_IMAGE_1, m_pictureImage[0]);
-	DDX_Control(pDX, IDC_STATIC_IMAGE_2, m_pictureImage[1]);
-	DDX_Control(pDX, IDC_STATIC_IMAGE_3, m_pictureImage[2]);
 }
 
 BEGIN_MESSAGE_MAP(CBlurManagerDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_QUERYDRAGICON()
+	ON_MESSAGE(WM_UPDATE_IMAGE, &CBlurManagerDlg::OnUpdateImage)
 	ON_BN_CLICKED(IDC_BUTTON_LOAD_IMAGE, &CBlurManagerDlg::OnBnClickedButtonLoadImage)
 END_MESSAGE_MAP()
 
@@ -191,12 +209,58 @@ BOOL CBlurManagerDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// 큰 아이콘을 설정합니다.
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
-	// 1. UI 초기화 (이미지 표현 창 위치 조정)
+	// 1. Logger 초기화
+	CLogger::Init();
+	CLogger::Log("Program on.");
+
+	// 2. UI 초기화 (이미지 표현 창 위치 조정)
 	initUI();
 
-	// 3. 
-
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
+}
+
+void CBlurManagerDlg::initUI()
+{
+	// 다이얼로그 창 사이즈 가져오기
+	CRect dlgRect;
+	GetClientRect(&dlgRect);
+	int dlgWidth = dlgRect.Width();
+	int dlgHeight = dlgRect.Height();
+
+	// 창 마진 설정
+	int nMargin = 10;
+	int nTopMargin = 40;
+	int nBottomMargin = 100;
+
+	// 가로 : 다이얼로그 가로의 50% 차지 (양 옆 마진 제외)
+	int imgWidth = (dlgWidth - (nMargin * 2)) / 2;
+
+	// 세로 : 다이얼로그 남은 공간(상,하 마진 + 바닥 마진)을 3등분하여 각 이미지가 1/3씩 차지
+	int availableHeight = dlgHeight - nBottomMargin - nTopMargin - (nMargin * (IMAGE_COUNT + 1));
+	int imgHeight = availableHeight / IMAGE_COUNT;
+
+	// 이미지 디스플레이 위치 설정 (세로 3등분 배치)
+	for (int type = TYPE_CUSTOM; type < TYPE_MAX; type++)
+	{
+		int xPos = nMargin + type * imgWidth;
+
+		for (int i = 0; i < IMAGE_COUNT; i++)
+		{
+			int yPos = nTopMargin + nMargin + i * (imgHeight + nMargin);
+
+			CRect rectControl(xPos, yPos, xPos + imgWidth, yPos + imgHeight);
+			auto pictureControl = std::make_unique<CStatic>();
+
+			if (!pictureControl->Create(_T(""), WS_CHILD | WS_VISIBLE | SS_BITMAP | SS_CENTERIMAGE, rectControl, this))
+			{
+				CLogger::Log("Picture Control 생성 실패!");
+				return;
+			}
+
+			// 벡터에 추가
+			m_mapPictureImage[type].push_back(std::move(pictureControl));
+		}
+	}
 }
 
 void CBlurManagerDlg::OnSysCommand(UINT nID, LPARAM lParam)
@@ -223,117 +287,214 @@ HCURSOR CBlurManagerDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-
-
 void CBlurManagerDlg::OnBnClickedButtonLoadImage()
 {
-	if (m_vecImagePtr.empty() == false)
+	if (m_mapImagePtr.empty() == false)
 	{
-		m_vecImagePtr.clear();
+		m_mapImagePtr.clear();
 	}
 
-	const std::string& strFolderPath = m_pConfigManager->getStrValue(CONFIG::SECTION_SYSTEM, CONFIG::SYSTEM_LOAD_IMAGE_PATH);
-	const int nKernelSize = m_pConfigManager->getIntValue(CONFIG::SECTION_SYSTEM, CONFIG::SYSTEM_KERNEL_SIZE);
+	std::thread([this]() {
+		const std::string& strFolderPath = m_pConfigManager->getStrValue(CONFIG::SECTION_SYSTEM, CONFIG::SYSTEM_LOAD_IMAGE_PATH);
+		const int nKernelSize = m_pConfigManager->getIntValue(CONFIG::SECTION_SYSTEM, CONFIG::SYSTEM_KERNEL_SIZE);
 
-	// #Log : 로드 시작
-	// 파일 로드
-	bool bLoadedImage = openFileAndLoadImage(strFolderPath);
+		// #Log : 로드 시작
+		CLogger::Log(std::format("[INFO] 이미지 Load 시작."));
 
-	// #Log : 로드 완료
-	if (bLoadedImage == false)	return;
-	
-	for (auto& image : m_vecImagePtr)
-		image = ProcessBlurWithDLL("OpenCVBlurDLL.dll", image, nKernelSize);
+		// 파일 로드
+		std::shared_ptr<std::vector<cv::Mat>> vecLoadedImage = std::make_shared<std::vector<cv::Mat>>();
+		bool bLoadedImage = openFileAndLoadImage(strFolderPath, vecLoadedImage);
 
-	// 이미지 그리기 메세지
-	displayImage();
+		if (bLoadedImage == false)	return;
+
+		// #Log : 로드 완료
+		CLogger::Log(std::format("[INFO] 이미지 Load 완료."));
+
+		std::vector<std::thread> threads;
+		for (int i = TYPE_CUSTOM; i < TYPE_MAX; i++) {
+			const std::string strDLLName = (i == TYPE_CUSTOM) ? "Custom.dll" : "Opencv.dll";
+			for (auto& image : *vecLoadedImage) {
+				m_mapImagePtr[i].push_back(std::make_shared<ImageObject>(image.clone()));
+			}
+
+			if (i == TYPE_CUSTOM) {
+				for (auto& imagePtr : m_mapImagePtr[i]) {
+					threads.emplace_back([this, strDLLName, nKernelSize, &imagePtr]() mutable {
+						DWORD threadID = GetCurrentThreadId();
+						thread_local SIZE_T memBefore = GetMemoryUsage();
+
+						CLogger::Log(std::format("[THREAD] Custom Blur 시작 - ThreadID: {}", threadID));
+						auto startTime = getCurrentTime();
+
+						imagePtr = ProcessBlurWithDLL(strDLLName, imagePtr, nKernelSize);
+
+						auto endTime = getCurrentTime();
+						CLogger::Log(std::format("[THREAD] Custom Blur 완료 ({}ms)- ThreadID: {}", static_cast<int>(endTime-startTime), threadID));
+
+						thread_local SIZE_T memAfter = GetMemoryUsage();
+						SIZE_T memoryUsed = memAfter - memBefore;
+						CLogger::Log(std::format("[MEMORY] Custom Blur 메모리 사용량 ({:.3f}MB)- ThreadID: {}", memoryUsed / (1024.0 * 1024.0), threadID));
+						});
+				}
+			} else {
+				threads.emplace_back([&, i]() {
+					DWORD threadID = GetCurrentThreadId();
+					int nIdx = 1;
+					for (auto& imagePtr : m_mapImagePtr[i]) {
+						thread_local SIZE_T memBefore = GetMemoryUsage();
+
+						CLogger::Log(std::format("[THREAD] OpenCV Blur 시작 - {}", nIdx));
+						auto startTime = getCurrentTime();
+
+						imagePtr = ProcessBlurWithDLL("Opencv.dll", imagePtr, nKernelSize);
+
+						auto endTime = getCurrentTime();
+						CLogger::Log(std::format("[THREAD] OpenCV Blur 완료 ({}ms) - {}", static_cast<int>(endTime - startTime), nIdx));
+
+						thread_local SIZE_T memAfter = GetMemoryUsage();
+						SIZE_T memoryUsed = memAfter - memBefore;
+						CLogger::Log(std::format("[MEMORY] OpenCV Blur 메모리 사용량 ({:.3f}MB)- {}", memoryUsed / (1024.0 * 1024.0), nIdx++));
+					}
+				});
+			}
+		}
+
+		for (auto& t : threads) {
+			t.join();
+		}
+
+		// UI 업데이트
+		PostMessage(WM_UPDATE_IMAGE, 0, 0);
+
+		bool isEqual = true;
+		for (int i = 0; i < m_mapImagePtr[TYPE_CUSTOM].size(); i++)
+		{
+			if(!checkImageEqual(m_mapImagePtr[TYPE_CUSTOM][i], m_mapImagePtr[TYPE_OPENCV][i]))
+			{
+				isEqual = false;
+				CLogger::Log(std::format("[INFO] {}번째 이미지 픽셀값 불일치.", i + 1));
+			}
+		}
+
+		if(isEqual)
+		{
+			CLogger::Log(std::format("[INFO] 전체 이미지 픽셀값 일치."));
+		}
+
+		const std::string& strSaveFolderPath = m_pConfigManager->getStrValue(CONFIG::SECTION_SYSTEM, CONFIG::SYSTEM_SAVE_IMAGE_PATH);
+		
+		// 폴더가 없으면 생성
+		std::filesystem::path savePath(strSaveFolderPath);
+		if (!std::filesystem::exists(savePath))
+		{
+			std::filesystem::create_directories(savePath);
+		}
+		for (int i = 0; i < m_mapImagePtr[TYPE_CUSTOM].size(); i++)
+		{
+			const std::string strDLLName = (i == TYPE_CUSTOM) ? "Custom" : "Opencv";
+			int cnt = 1;
+			for (auto& imagePtr : m_mapImagePtr[i]) {
+				std::string strName = strSaveFolderPath + std::format("/{}_Image{}.jpg", strDLLName, cnt++);
+				cv::imwrite(strName, imagePtr->convertToMat());
+			}
+		}
+	}).detach();
 }
 
-bool CBlurManagerDlg::openFileAndLoadImage(const std::string& strFolderPath)
+LRESULT CBlurManagerDlg::OnUpdateImage(WPARAM wParam, LPARAM lParam)
+{
+	for (int i = TYPE_CUSTOM; i < TYPE_MAX; i++) {
+		displayImage(m_mapImagePtr[i], m_mapPictureImage[i], m_mapHBitmap[i]);
+	}
+
+	return 0;
+}
+
+bool CBlurManagerDlg::openFileAndLoadImage(const std::string& strFolderPath, std::shared_ptr<std::vector<cv::Mat>>& vecLoadedImage)
 {
 	if (strFolderPath.empty() == true)	return false;
 
 	for (const auto& entry : fs::directory_iterator(strFolderPath))
 	{
+		if (vecLoadedImage->size() >= 3)	break;
+
 		if (entry.is_regular_file())
 		{
-			cv::Mat img = cv::imread(entry.path().string(), cv::IMREAD_GRAYSCALE);
+			const std::string& strFile = entry.path().string();
+			cv::Mat img = cv::imread(strFile, cv::IMREAD_GRAYSCALE);
+
 			if (!img.empty())
 			{
 				// #Log : 파일명 로드 성공 (idx)
+				CLogger::Log(std::format("[INFO] {} Load 성공. height:{}, width:{}, channels:{}", strFile, img.rows, img.cols, img.channels()));
 				// 이미지 vector에 적재
-				m_vecImagePtr.push_back(std::make_shared<ImageObject>(img));
+				vecLoadedImage->push_back(std::move(img));
 			}
 			else
 			{
 				// #Log : warning : 파일명 로드 실패 (idx)
+				CLogger::Log(std::format("[INFO] {} Load 실패.", strFile));
+			}
+
+			if (img.channels() != 1)
+			{
+				CLogger::Log(std::format("[WARNING] Load 종료. 1채널 이미지 아님, 파일명:{}", strFile));
+
+				return false;
 			}
 		}
 	}
 
 	// 이미지 로드 성공시, true 반환
-	return !m_vecImagePtr.empty();
+	return !vecLoadedImage->empty();
 }
 
-void CBlurManagerDlg::displayImage() {
-	if (m_vecImagePtr.empty()) return;
+void CBlurManagerDlg::displayImage(const std::vector<ImageObjectPtr>& vecImagePtr, std::vector<std::unique_ptr<CStatic>>& pictureImage, std::vector<HBITMAP>& vecHBitmap) {
+	if (vecImagePtr.empty()) return;
 
 	// 기존 HBITMAP 제거
-	for (auto& hBitmap : m_vecHBitmap) 
+	for (auto& hBitmap : vecHBitmap)
 	{
 		if (hBitmap) 
 		{
 			DeleteObject(hBitmap);
 		}
 	}
-	m_vecHBitmap.clear();
+	vecHBitmap.clear();
 	
-	int numImages = m_vecImagePtr.size();
+	int numImages = vecImagePtr.size();
 
 	int nMargin = 10;
+	int nTopMargin = 40;
 	int nBottomMargin = 100;
 
 	// Dialog 크기 get
 	CRect rect;
 	GetClientRect(&rect);
-	std::pair<int, int> targetSize((rect.Width() - nMargin * 2) * 0.5, (rect.Height() - nBottomMargin - nMargin * (numImages + 1)) / numImages);
+	std::pair<int, int> targetSize((rect.Width() - nMargin * 2) * 0.5, (rect.Height() - nTopMargin - nBottomMargin - nMargin * (numImages + 1)) / numImages);
 	targetSize.first -= targetSize.first % 4;
 	targetSize.second -= targetSize.second % 4;
 
 	// 각 이미지 출력 
 	for (int i = 0; i < numImages; i++) 
 	{
-		HBITMAP hBitmap = MatToHBITMAP(m_vecImagePtr[i]->convertToMat(), targetSize.first, targetSize.second);
-		m_vecHBitmap.push_back(hBitmap);
-		m_pictureImage[i].SetBitmap(hBitmap);
+		HBITMAP hBitmap = MatToHBITMAP(vecImagePtr[i]->convertToMat(), targetSize.first, targetSize.second);
+		vecHBitmap.push_back(hBitmap);
+		pictureImage[i]->SetBitmap(hBitmap);
 	}
 }
 
-void CBlurManagerDlg::initUI()
+bool CBlurManagerDlg::checkImageEqual(const ImageObjectPtr image1, const ImageObjectPtr image2)
 {
-	// 다이얼로그 창 사이즈 가져오기
-	CRect dlgRect;
-	GetClientRect(&dlgRect);
-	int dlgWidth = dlgRect.Width();
-	int dlgHeight = dlgRect.Height();
+	cv::Mat img1 = image1->convertToMat();
+	cv::Mat img2 = image2->convertToMat();
 
-	// 창 마진 설정
-	int margin = 10;
-	int nBottomMargin = 100;
-
-	// 가로 : 다이얼로그 가로의 50% 차지 (양 옆 마진 제외)
-	int imgWidth = (dlgWidth - (margin * 2)) / 2;
-
-	// 세로 : 다이얼로그 남은 공간(상,하 마진 + 바닥 마진)을 3등분하여 각 이미지가 1/3씩 차지
-	int availableHeight = dlgHeight - nBottomMargin - (margin * (IMAGE_COUNT + 1));
-	int imgHeight = availableHeight / IMAGE_COUNT;
-
-	// 이미지 디스플레이 위치 설정 (세로 3등분 배치)
-	for (int i = 0; i < IMAGE_COUNT; i++) 
-	{
-		int xPos = margin;
-		int yPos = margin + i * (imgHeight + margin);
-
-		m_pictureImage[i].SetWindowPos(NULL, xPos, yPos, imgWidth, imgHeight, SWP_NOZORDER);
+	if (img1.size() != img2.size() || img1.type() != img2.type()) {
+		return false;  // 크기나 타입이 다르면 다른 이미지
 	}
+
+	cv::Mat compareImage;
+	cv::absdiff(img1, img2, compareImage);  // 절대 차이 계산
+	int nDiffCount = cv::countNonZero(compareImage);
+	return nDiffCount == 0;  // 모든 픽셀이 0이면 동일한 이미지
 }

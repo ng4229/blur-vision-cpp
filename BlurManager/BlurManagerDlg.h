@@ -5,6 +5,13 @@
 #pragma once
 #include "ImageObject.h"
 #include "ConfigManager.h"
+#include "CLogger.h"
+
+enum TYPE_PROCESSOR {
+	TYPE_CUSTOM = 0,
+	TYPE_OPENCV,
+	TYPE_MAX
+};
 
 // CBlurManagerDlg 대화 상자
 class CBlurManagerDlg : public CDialogEx
@@ -25,13 +32,12 @@ public:
 // 구현입니다.
 private:
 	// 불러온 이미지 적재용
-	std::vector<ImageObjectPtr> m_vecImagePtr;
+	std::map<int, std::vector<ImageObjectPtr>> m_mapImagePtr;	 // Image 저장 객체
+	std::map<int, std::vector<std::unique_ptr<CStatic>>> m_mapPictureImage;	// Picture control
+	std::map<int, std::vector<HBITMAP>> m_mapHBitmap;		// 이미지 UI 표현
+
 	std::shared_ptr<CConfigManager> m_pConfigManager;
 
-	CStatic m_pictureImage[IMAGE_COUNT];
-
-	// 이미지 UI 표현
-	std::vector<HBITMAP> m_vecHBitmap;
 
 protected:
 	HICON m_hIcon;
@@ -44,10 +50,15 @@ protected:
 public:
 	afx_msg void OnBnClickedButtonLoadImage();
 
-	bool openFileAndLoadImage(const std::string& strFolderPath);
-
-	void displayImage();
+	LRESULT OnUpdateImage(WPARAM wParam, LPARAM lParam);
 
 	void initUI();
+
+	bool openFileAndLoadImage(const std::string& strFolderPath, std::shared_ptr<std::vector<cv::Mat>>& vecLoadedImage);
+
+	void displayImage(const std::vector<ImageObjectPtr>& vecImagePtr, std::vector<std::unique_ptr<CStatic>>& pictureImage, std::vector<HBITMAP>& vecHBitmap);
+
+	bool checkImageEqual(const ImageObjectPtr image1, const ImageObjectPtr image2);
+
 
 };
